@@ -216,13 +216,4 @@ export class PC_Builder {
     {
         return this.build().join("\n");
     }
-};
-
-const builder = new PC_Builder();
-console.log(builder.variableAdd("prefix", "/usr").toString());
-console.log(builder.variableAdd("includedir", "${prefix}/include").toString());
-console.log(builder.variableAdd("libdir", "${prefix}/lib").toString());
-console.log(builder.cflagAdd("-I${includedir}").toString());
-console.log(builder.libAdd("-L${libdir}").toString());
-console.log(builder.libAdd("-ltest").toString());
-console.log(builder.toString());
+}
