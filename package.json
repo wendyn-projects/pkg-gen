@@ -2,7 +2,7 @@
   "name": "pkg-gen",
   "version": "1.0.0",
   "description": "`pkg-config` `.pc` File Generator",
-  "main": "main.js",
+  "main": "PkgGenn.js",
   "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
