@@ -205,11 +205,13 @@ export default class PkgGen {
         if (this.#libsPrivate.length !== 0)
             properties.push(`Libs.private: ${this.#libsPrivate.join(" ")}`);
 
-        return [ 
-            ...this.#variables,
-            "",
-            ...properties
-        ];
+        return this.#variables.length === 0?
+            properties :
+            [ 
+                ...this.#variables,
+                "",
+                ...properties
+            ];
     }
 
     toString()
