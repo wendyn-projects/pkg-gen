@@ -24,10 +24,27 @@ export class RequirementConflictError extends Error {
 
 }
 
-export class Variable {
+export class Item {
+
+    #value;
+
+    constructor(value)
+    {
+        this.#value = value;
+    }
+
+    /**
+     * @returns {string}
+     */
+    get value()
+    {
+        return this.#value;
+    }
+}
+
+export class Variable extends Item {
 
     #name;
-    #value;
 
     /**
      * @param {string} name 
@@ -35,8 +52,8 @@ export class Variable {
      */
     constructor(name, value)
     {
+        super(value)
         this.#name = name;
-        this.#value = value;
     }
 
     /**
@@ -49,42 +66,39 @@ export class Variable {
 
     toString()
     {
-        return this.#name + "=" + this.#value;
+        return this.#name + "=" + this.value;
     }
 }
 
-export class Cflag {
-    #value;
+export class Cflag extends Item {
 
     /**
      * @param {string} value 
      */
     constructor(value)
     {
-        this.#value = value;
+        super(value);
     }
 
     toString()
     {
-        return this.#value;
+        return this.value;
     }
 }
 
-export class Lib {
-
-    #value;
+export class Lib extends Item {
 
     /**
      * @param {string} value 
      */
     constructor(value)
     {
-        this.#value = value;
+        super(value);
     }
 
     toString()
     {
-        return this.#value;
+        return this.value;
     }
 }
 
@@ -120,7 +134,7 @@ export default class PkgGen {
 
     constructor()
     {
-        this.#variables = [];
+        this.#variables = new Map();
         this.#cflags = [];
         this.#cflagsPrivate = [];
         this.#libs = [];
@@ -136,15 +150,37 @@ export default class PkgGen {
      * @param {string} value
      * @returns {Variable|MissingVariableError[]}
      */
-    variableAdd(name, value)
+    variableSet(name, value)
     {
         const dependenciesNames = parseVariableNames(value);
-        const missingVariableNames = dependenciesNames.filter(name => !this.#variables.find(variable => variable.name === name));
+        const missingVariableNames = dependenciesNames.filter(name => !this.#variables.has(name));
         if (missingVariableNames.length !== 0)
             return missingVariableNames.map(name => new MissingVariableError(name));
         const variable = new Variable(name, value);
-        this.#variables.push(variable);
+        this.#variables.set(name, variable);
         return variable;
+    }
+
+    /**
+     * @param {string} name 
+     * @returns {Item[]} list of conflicting items preventing the deletation.
+     */
+    variableDelete(name)
+    {
+        if (this.#variables.has(name))
+        {
+            const conflictingItems = [
+                ...this.#variables.filter(variable => parseVariableNames(variable.value).includes(name)),
+                ...this.#cflags.filter(variable => parseVariableNames(variable.value).includes(name)),
+                ...this.#cflagsPrivate.filter(variable => parseVariableNames(variable.value).includes(name)),
+                ...this.#libs.filter(variable => parseVariableNames(variable.value).includes(name)),
+                ...this.#libsPrivate.filter(variable => parseVariableNames(variable.value).includes(name))
+            ]
+            if (conflictingItems.length === 0)
+                this.#variables.delete(name);
+            return conflictingItems;
+        }
+        return [];
     }
 
     /**
@@ -167,6 +203,36 @@ export default class PkgGen {
     }
 
     /**
+     * @param {string|Cflag} value 
+     * @param {boolean|undefined} isPrivate
+     * @returns {Cflag|undefined}
+     */
+    cflagDelete(value, isPrivate) {
+        let cflag;
+        if (value instanceof Cflag)
+            value = value.value;
+        if (isPrivate === false || isPrivate === undefined)
+        {
+            const index = this.#cflags.findIndex(cflag => cflag.value === value);
+            if (index !== -1)
+            {
+                cflag = this.#cflags[index];
+                this.#cflags.splice(index, 1);
+            }
+        }
+        if (isPrivate === true || isPrivate === undefined)
+        {
+            const index = this.#cflagsPrivate.findIndex(cflag => cflag.value === value);
+            if (index !== -1)
+            {
+                cflag = this.#cflagsPrivate[index];
+                this.#cflagsPrivate.splice(index, 1);
+            }
+        }
+        return cflag;
+    }
+
+    /**
      * @param {string} value 
      * @param {boolean|undefined} isPrivate 
      * @returns {Lib|MissingVariableError[]}
@@ -182,6 +248,36 @@ export default class PkgGen {
             this.#libsPrivate.push(lib);
         else
             this.#libs.push(lib);
+        return lib;
+    }
+
+    /**
+     * @param {string|Lib} value 
+     * @param {boolean|undefined} isPrivate
+     * @returns {Lib|undefined}
+     */
+    libDelete(value, isPrivate) {
+        let lib;
+        if (value instanceof Lib)
+            value = value.value;
+        if (isPrivate === false || isPrivate === undefined)
+        {
+            const index = this.#libs.findIndex(cflag => cflag.value === value);
+            if (index !== -1)
+            {
+                lib = this.#libs[index];
+                this.#libs.splice(index, 1);
+            }
+        }
+        if (isPrivate === true || isPrivate === undefined)
+        {
+            const index = this.#libsPrivate.findIndex(cflag => cflag.value === value);
+            if (index !== -1)
+            {
+                lib = this.#libsPrivate[index];
+                this.#libsPrivate.splice(index, 1);
+            }
+        }
         return lib;
     }
 
@@ -208,7 +304,7 @@ export default class PkgGen {
         return this.#variables.length === 0?
             properties :
             [ 
-                ...this.#variables,
+                ...this.#variables.values(),
                 "",
                 ...properties
             ];
