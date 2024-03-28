@@ -106,7 +106,7 @@ export function parseVariableNames(value)
     return Array.from(matchVariableNames(value)).map(match => match[1]);
 }
 
-export class PC_Builder {
+export default class PkgGen {
 
     #variables;
     #cflags;
@@ -185,7 +185,7 @@ export class PC_Builder {
         return lib;
     }
 
-    build()
+    generate()
     {
         const properties = [
             `Name: ${this.name}`,
@@ -214,6 +214,6 @@ export class PC_Builder {
 
     toString()
     {
-        return this.build().join("\n");
+        return this.generate().join("\n");
     }
 }
